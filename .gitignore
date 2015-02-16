@@ -1,0 +1,10 @@
+# class files
+*.class
+
+# emacs temp files
+*~
+\#*\#
+
+# sbt temp files
+target/
+project/
