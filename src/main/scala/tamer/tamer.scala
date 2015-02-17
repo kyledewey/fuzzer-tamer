@@ -14,7 +14,7 @@ class DirectoryIterator(dir: String, extension: String) {
   private val stream = 
     Files.newDirectoryStream(
       FileSystems.getDefault.getPath(dir),
-      "*" + extension)
+      extension)
   private val iterator = stream.iterator
 
   def nextFile(): Option[File] = {

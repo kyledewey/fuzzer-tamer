@@ -50,7 +50,7 @@ object Main {
   // Takes the following command-line arguments:
   // -Type of parser to use for reading output file
   // -Directory containing bug-exhibiting files
-  // -Extension for bug-exhibiting files
+  // -File glob for bug-exhibiting files
   // -Directory to put bug equivalence class information
   //
   // The bug equivalence class information is a series of files,
