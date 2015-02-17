@@ -79,7 +79,7 @@ class Tamer[T <: ParseResult[T]](
 
     private def writeResult(result: T) {
       output.synchronized {
-	output.write(result.sourceFile.getPath)
+	output.write(result.sourceFile.getPath + "\n")
       }
     }
 
@@ -151,6 +151,7 @@ class Tamer[T <: ParseResult[T]](
       pool.submit(new TamerRunnable()))
     pool.shutdown()
     pool.awaitTermination(java.lang.Long.MAX_VALUE, TimeUnit.SECONDS)
+    done()
   }
 }
 

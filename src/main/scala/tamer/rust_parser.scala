@@ -1,5 +1,7 @@
 package tamer
 
+import scala.annotation.tailrec
+
 import java.io.File
 
 case class RustStackTraceEntry(path: Seq[String])
@@ -84,17 +86,49 @@ object RustStackTrace {
 } // RustStackTrace
 
 object RustParser extends Parser[RustParseResult] {
+  val PANIC_HEADER = Seq("error: internal compiler error: unexpected panic",
+			 "note: the compiler unexpectedly panicked. this is a bug.",
+			 "note: we would appreciate a bug report: http://doc.rust-lang.org/complement-bugreport.html",
+			 "note: run with `RUST_BACKTRACE=1` for a backtrace")
+  val STACK_OVERFLOW_HEADER = Seq("thread 'rustc' has overflowed its stack")
+
+  val headerLines = Seq(PANIC_HEADER, STACK_OVERFLOW_HEADER)
+
+  // returns which header matched, along with the lines after the header line
+  @tailrec
+  final def parseLinesUntilHeader(lines: List[String]): Option[(Seq[String], List[String])] = {
+    def startsWithHeader(header: Seq[String]): Boolean = {
+      val zipped = lines.zip(header)
+      zipped.forall(
+	{ case (s1, s2) => s1 == s2 }) && zipped.length >= header.length
+    }
+
+    headerLines.find(startsWithHeader) match {
+      case Some(header) => Some((header, lines.drop(header.length)))
+      case None => {
+	lines match {
+	  case _ :: tail => {
+	    parseLinesUntilHeader(tail)
+	  }
+	  case _ => None
+	}
+      }
+    }
+  }
+
   def parseLines(file: File, lines: List[String]): RustParseResult = {
     lazy val unknown = RustUnknown(file)
 
-    lines match {
-      case "" :: "thread 'rustc' has overflowed its stack" :: _ => 
-	RustStackOverflow(file)
-      case """error: internal compiler error: unexpected panic""" :: """note: the compiler unexpectedly panicked. this is a bug.""" :: """note: we would appreciate a bug report: http://doc.rust-lang.org/complement-bugreport.html""" :: """note: run with `RUST_BACKTRACE=1` for a backtrace""" :: restLines => {
-	RustStackTrace.parseStackTrace(file, restLines).getOrElse(unknown)
-      }
-      case _ => unknown
-    }
+    parseLinesUntilHeader(lines).map(
+      { case (header, rest) => {
+	  header match {
+	    case PANIC_HEADER => 
+	      RustStackTrace.parseStackTrace(file, rest).getOrElse(unknown)
+	    case STACK_OVERFLOW_HEADER =>
+	      RustStackOverflow(file)
+	    case _ => sys.error("impossible") // shouldn't be possible
+	  }
+      } } ).getOrElse(unknown)
   }
 }
 
