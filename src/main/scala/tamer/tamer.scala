@@ -45,7 +45,7 @@ class Tamer[T <: ParseResult[T]](
   
   private val directoryIterator =
     new DirectoryIterator(sourceDir, extension)
-  
+
   class TamerRunnable extends Runnable {
     def run() {
       @tailrec
@@ -58,29 +58,40 @@ class Tamer[T <: ParseResult[T]](
 	  case None => ()
 	}
       }
+
       runWithFile(directoryIterator.nextFile)
     }
   }
 
   class EquivalenceClass(private val representative: T,
 			 private val id: Int) {
-    // begin constructor
-    private val output =
-      new BufferedWriter(
-	new OutputStreamWriter(
-	  new FileOutputStream(
-	    new File(resultDir + "/" + "bug" + id.toString))))
+    // BEGIN CONSTRUCTOR
+
+    // create directory for this bug
+    private val dirName = resultDir + "/bug" + id.toString
+    new File(dirName).mkdir()
+
+    // create mapping from thread IDs to writable files
+    private val threadIdToFile =
+      new ConcurrentHashMap[Long, AsyncFile]()
+
     writeResult(representative)
-    // end constructor
+
+    // END CONSTRUCTOR
 
     private def sameClassAs(other: T): Boolean = {
       representative == other || representative.sameClassAs(other)
     }
 
     private def writeResult(result: T) {
-      output.synchronized {
-	output.write(result.sourceFile.getPath + "\n")
+      val threadId = Thread.currentThread.getId
+      var file = threadIdToFile.get(threadId)
+      if (file eq null) {
+        file = new AsyncFile(
+          new File(dirName + "/" + threadId.toString))
+        threadIdToFile.put(threadId, file)
       }
+      file.append(result.sourceFile.getPath)
     }
 
     // returns true if we handled it, meaning it was written
@@ -96,7 +107,8 @@ class Tamer[T <: ParseResult[T]](
 
     // indicates we are done with this equivalence class
     def done() {
-      output.close()
+      import scala.collection.JavaConverters._
+      threadIdToFile.values.asScala.foreach(_.close())
     }
   }
 
