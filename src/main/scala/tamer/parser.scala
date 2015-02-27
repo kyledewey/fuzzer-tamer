@@ -1,10 +1,28 @@
 package tamer
 
-import java.io.File
+import java.io._
 
 abstract class ParseResult[T <: ParseResult[T]](val sourceFile: File) {
   // determines if this parse result is in the same class as another
   def sameClassAs(other: T): Boolean
+}
+
+object Parser {
+  // returns a sequence of strings contained in the file, without
+  // newlines
+  def fileToStrings(file: File): List[String] = {
+    var retval: List[String] = List()
+    val reader =
+      new BufferedReader(
+	new FileReader(file))
+    var line = reader.readLine()
+    while (line ne null) {
+      retval ::= line
+      line = reader.readLine()
+    }
+    reader.close()
+    retval.reverse
+  }
 }
 
 trait Parser[T <: ParseResult[T]] {
@@ -12,7 +30,7 @@ trait Parser[T <: ParseResult[T]] {
   def parseFile(file: File): T = {
     parseLines(
       file,
-      scala.io.Source.fromFile(file).getLines.toList)
+      Parser.fileToStrings(file))
   }
 }
 
