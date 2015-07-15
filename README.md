@@ -48,6 +48,7 @@ Both need to write the name of the file somewhere, and the structure above allow
 
 # Extending the Framework #
 To use the framework for a particular language or particular kind of equivalence relation, you'll need to:
+
 1. Extend `ParseResult` with whatever parsed representation you want for your purposes
 2. Extend `Parser` to be able to parse in `ParseResult`s of the kind you want
 3. Put your parser in `ParserIndex`, along with some usable name
